@@ -7,9 +7,10 @@ import (
 )
 
 func main() {
-	insert("key1", "value 1")
+	insert("key-1", "value 1")
 	view()
 }
+
 func view() {
 
 	db, err := bolt.Open("my.db", 0600, nil)
@@ -46,7 +47,7 @@ func insert(key string, value string) {
 	defer db.Close()
 }
 
-func create() {
+func init() {
 	db, err := bolt.Open("my.db", 0600, nil)
 
 	if err != nil {
