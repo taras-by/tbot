@@ -3,11 +3,15 @@ package main
 import (
 	"fmt"
 	"github.com/boltdb/bolt"
+	"github.com/bxcodec/faker"
+	"github.com/satori/go.uuid"
 	"log"
 )
 
 func main() {
-	insert("key-1", "value 1")
+	uid := uuid.Must(uuid.NewV4()).String()
+	text := faker.Sentence()
+	insert(uid, text)
 	view()
 }
 
