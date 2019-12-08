@@ -1,9 +1,15 @@
 package store
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
+)
+
+const (
+	participantsBucketName = "participants"
+	DBPath = "my.db"
 )
 
 type storage struct {
@@ -12,15 +18,14 @@ type storage struct {
 
 func NewStorage() (*storage, error) {
 
-	fileName := "my.db"
-	bdb, err := bolt.Open(fileName, 0600, nil)
+	bdb, err := bolt.Open(DBPath, 0600, nil)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to make boltdb for %s", fileName)
+		return nil, errors.Wrapf(err, "failed to make boltdb for %s", DBPath)
 	}
 
 	bdb.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucket([]byte("MyBucket"))
+		_, err := tx.CreateBucket([]byte(participantsBucketName))
 		if err != nil {
 			return fmt.Errorf("create bucket: %s", err)
 		}
@@ -32,21 +37,39 @@ func NewStorage() (*storage, error) {
 	}, nil
 }
 
-func (s *storage) List() () {
+func (s *storage) Create(participant Participant) {
+	s.save(participantsBucketName, participant.User.ID, participant)
+}
+
+func (s *storage) FindAll() (participants []Participant) {
+	values := s.list(participantsBucketName)
+	participants = []Participant{}
+	for _, v := range values {
+		participant := Participant{}
+		_ = json.Unmarshal(v, &participant)
+		participants = append(participants, participant)
+	}
+	return participants
+}
+
+func (s *storage) list(bucketName string) (values [][]byte) {
+	values = [][]byte{}
 	s.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("MyBucket"))
+		b := tx.Bucket([]byte(bucketName))
 		b.ForEach(func(k, v []byte) error {
-			fmt.Printf("%s: %s\n", k, v)
+			values = append(values, v)
 			return nil
 		})
 		return nil
 	})
+	return values
 }
 
-func (s *storage) Insert(key string, value string) () {
+func (s *storage) save(bucketName string, key string, value interface{}) () {
+	jsonData, _ := json.Marshal(value)
 	s.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("MyBucket"))
-		err := b.Put([]byte(key), []byte(value))
+		b := tx.Bucket([]byte(bucketName))
+		err := b.Put([]byte(key), []byte(jsonData))
 		return err
 	})
 }

@@ -1,22 +1,32 @@
 package main
 
 import (
+	"fmt"
 	"github.com/bxcodec/faker"
 	"github.com/satori/go.uuid"
 	"github.com/taras-by/tbot/store"
 	"log"
+	"time"
 )
 
 func main() {
-	uid := uuid.Must(uuid.NewV4()).String()
-	text := faker.Sentence()
 
 	storage, err := store.NewStorage()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	storage.Insert(uid, text)
-	storage.List()
+	storage.Create(store.Participant{
+		User: store.User{
+			ID:   uuid.Must(uuid.NewV4()).String(),
+			Name: faker.Name(),
+		},
+		Time: time.Now(),
+	})
+
+	for _, p := range storage.FindAll() {
+		fmt.Printf("Participant: %v\n", p)
+	}
+
 	defer storage.Close()
 }
