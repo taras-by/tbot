@@ -1,50 +1,47 @@
 package main
 
 import (
-	"fmt"
-	"github.com/bxcodec/faker"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/satori/go.uuid"
-	"github.com/taras-by/tbot/store"
-	"io/ioutil"
+	"flag"
 	"log"
-	"time"
+	"os"
 )
-
-const (
-	telegramTokenFile = "telegram_token"
-)
+type command struct {
+	fs *flag.FlagSet
+	fn func(args []string) error
+}
 
 func main() {
 
-	storage, err := store.NewStorage()
-	if err != nil {
+	commands := map[string]command{
+		"server": serverCmd(),
+		"show": showCmd(),
+	}
+
+	fs := flag.NewFlagSet("tbot", flag.ExitOnError)
+
+	fs.Parse(os.Args[1:])
+
+	args := fs.Args()
+	if len(args) == 0 {
+		fs.Usage()
+		os.Exit(1)
+	}
+
+	if cmd, ok := commands[args[0]]; !ok {
+		log.Fatalf("Unknown command: %s", args[0])
+	} else if err := cmd.fn(args[1:]); err != nil {
 		log.Fatal(err)
 	}
+}
 
-	token, err := ioutil.ReadFile(telegramTokenFile)
-	if err != nil {
-		log.Panic(err.Error())
-	}
+func showCmd() command {
+	return command{fn: func([]string) error {
+		return show()
+	}}
+}
 
-	bot, err := tgbotapi.NewBotAPI(string(token))
-	if err != nil {
-		log.Panic(err.Error())
-	}
-
-	log.Printf("Authorized on account %s", bot.Self.UserName)
-
-	storage.Create(store.Participant{
-		User: store.User{
-			ID:   uuid.Must(uuid.NewV4()).String(),
-			Name: faker.Name(),
-		},
-		Time: time.Now(),
-	})
-
-	for _, p := range storage.FindAll() {
-		fmt.Printf("Participant: %v\n", p)
-	}
-
-	defer storage.Close()
+func serverCmd() command {
+	return command{fn: func([]string) error {
+		return server()
+	}}
 }

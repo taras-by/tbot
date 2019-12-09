@@ -5,24 +5,26 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
+	"log"
 )
 
 const (
 	participantsBucketName = "participants"
-	DBPath = "my.db"
+	DBPath                 = "my.db"
 )
 
-type storage struct {
+type Storage struct {
 	db *bolt.DB
 }
 
-func NewStorage() (*storage, error) {
+func NewStorage() (*Storage, error) {
 
 	bdb, err := bolt.Open(DBPath, 0600, nil)
 
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to make boltdb for %s", DBPath)
 	}
+	log.Printf("Storage opened")
 
 	bdb.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucket([]byte(participantsBucketName))
@@ -32,16 +34,17 @@ func NewStorage() (*storage, error) {
 		return nil
 	})
 
-	return &storage{
+	return &Storage{
 		db: bdb,
 	}, nil
 }
 
-func (s *storage) Create(participant Participant) {
-	s.save(participantsBucketName, participant.User.ID, participant)
+func (s *Storage) Create(participant Participant) {
+	chatParticipantsBucketName := chatParticipantsBucketName(participant.ChatId)
+	s.save(chatParticipantsBucketName, participant.User.ID, participant)
 }
 
-func (s *storage) FindAll() (participants []Participant) {
+func (s *Storage) FindAll() (participants []Participant) {
 	values := s.list(participantsBucketName)
 	participants = []Participant{}
 	for _, v := range values {
@@ -52,7 +55,23 @@ func (s *storage) FindAll() (participants []Participant) {
 	return participants
 }
 
-func (s *storage) list(bucketName string) (values [][]byte) {
+func (s *Storage) FindByChatId(chatId int64) (participants []Participant) {
+	chatParticipantsBucketName := chatParticipantsBucketName(chatId)
+	values := s.list(chatParticipantsBucketName)
+	participants = []Participant{}
+	for _, v := range values {
+		participant := Participant{}
+		_ = json.Unmarshal(v, &participant)
+		participants = append(participants, participant)
+	}
+	return participants
+}
+
+func chatParticipantsBucketName(chatId int64) string {
+	return string(chatId) + participantsBucketName
+}
+
+func (s *Storage) list(bucketName string) (values [][]byte) {
 	values = [][]byte{}
 	s.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucketName))
@@ -65,7 +84,16 @@ func (s *storage) list(bucketName string) (values [][]byte) {
 	return values
 }
 
-func (s *storage) save(bucketName string, key string, value interface{}) () {
+func (s *Storage) save(bucketName string, key string, value interface{}) () {
+
+	s.db.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucket([]byte(bucketName))
+		if err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		return nil
+	})
+
 	jsonData, _ := json.Marshal(value)
 	s.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucketName))
@@ -74,6 +102,7 @@ func (s *storage) save(bucketName string, key string, value interface{}) () {
 	})
 }
 
-func (s *storage) Close() () {
-	s.db.Close()
+func (s *Storage) Close() () {
+	_=s.db.Close()
+	log.Printf("Storage closed")
 }
