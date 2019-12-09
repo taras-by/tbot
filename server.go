@@ -97,16 +97,28 @@ func add(message *tgbotapi.Message) {
 }
 
 func participantsText(chatId int64) (text string) {
+	participants := storage.FindByChatId(chatId)
+	if len(participants) == 0 {
+		return "No participants"
+	}
 	text = "List of participants:\n"
-	for i, p := range storage.FindByChatId(chatId) {
+	for i, p := range participants {
 		text = text + fmt.Sprintf(" *%v)* %v\n", i+1, p.User.Name)
 	}
 	return text
 }
 
 func rm(message *tgbotapi.Message) {
-	sendMessageToChat(message.Chat.ID, "Removed ...")
 	chatId := message.Chat.ID
+	participant, err := storage.Find(strconv.Itoa(message.From.ID), message.Chat.ID)
+	if err != nil {
+		sendMessageToChat(chatId, "You are not a participant yet")
+		return
+	}
+
+	storage.Delete(participant)
+	sendMessageToChat(message.Chat.ID, fmt.Sprintf("Removed *%s*", participant.User.Name))
+
 	text := participantsText(chatId)
 	sendMessageToChat(chatId, text)
 }
