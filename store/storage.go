@@ -45,7 +45,7 @@ func (s *Storage) Close() () {
 	log.Printf("Storage closed")
 }
 
-func (s *Storage) Create(participant Participant) {
+func (s *Storage) Create(participant Participant) Participant {
 	_ = s.db.Update(func(tx *bolt.Tx) (err error) {
 		var chatBkt *bolt.Bucket
 
@@ -53,12 +53,14 @@ func (s *Storage) Create(participant Participant) {
 			return err
 		}
 
-		if err = s.save(chatBkt, participant.User.ID, participant); err != nil {
-			return errors.Wrapf(err, "failed to put key %s to bucket %s", participant.User.ID, participant)
+		if err = s.save(chatBkt, participant.Id(), participant); err != nil {
+			return errors.Wrapf(err, "failed to put key %s to bucket %s", participant.Id(), participant)
 		}
 
 		return nil
 	})
+
+	return participant
 }
 
 func (s *Storage) Delete(participant Participant) {
@@ -69,8 +71,8 @@ func (s *Storage) Delete(participant Participant) {
 			return err
 		}
 
-		if err = chatBkt.Delete([]byte(participant.User.ID)); err != nil {
-			return errors.Wrapf(err, "failed to delete key %s from chat bucket %v", participant.User.ID, participant.ChatId)
+		if err = chatBkt.Delete([]byte(participant.Id())); err != nil {
+			return errors.Wrapf(err, "failed to delete key %s from chat bucket %v", participant.Id(), participant.ChatId)
 		}
 
 		return nil

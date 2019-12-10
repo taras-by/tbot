@@ -21,10 +21,15 @@ var (
 		"list":  list,
 		"add":   add,
 		"rm":    rm,
+		"reset": reset,
 		"start": help,
 		"help":  help,
 	}
 )
+
+func reset(message *tgbotapi.Message) {
+	sendMessageToChat(message.Chat.ID, "Reset ...")
+}
 
 func server() (err error) {
 	token, err := ioutil.ReadFile(telegramTokenFile)
@@ -79,18 +84,33 @@ func list(message *tgbotapi.Message) {
 
 func add(message *tgbotapi.Message) {
 	chatId := message.Chat.ID
+	var participant store.Participant
 
-	storage.Create(
-		store.Participant{
-			User: store.User{
-				ID:   strconv.Itoa(message.From.ID),
-				Name: message.From.UserName,
+	if message.CommandArguments() == "" {
+		participant = storage.Create(
+			store.Participant{
+				User: store.User{
+					Id:   strconv.Itoa(message.From.ID),
+					Name: message.From.UserName,
+					Type: store.UserTelegram,
+				},
+				Time:   time.Now(),
+				ChatId: chatId,
 			},
-			Time:   time.Now(),
-			ChatId: chatId,
-		},
-	)
-
+		)
+	} else {
+		participant = storage.Create(
+			store.Participant{
+				User: store.User{
+					Name: store.Escape(message.CommandArguments()),
+					Type: store.UserGuest,
+				},
+				Time:   time.Now(),
+				ChatId: chatId,
+			},
+		)
+	}
+	sendMessageToChat(chatId, fmt.Sprintf("Added *%s*", participant.Link()))
 	text := participantsText(chatId)
 	sendMessageToChat(chatId, text)
 }
@@ -102,7 +122,7 @@ func participantsText(chatId int64) (text string) {
 	}
 	text = "List of participants:\n"
 	for i, p := range participants {
-		text = text + fmt.Sprintf(" *%v)* %v\n", i+1, p.User.Name)
+		text = text + fmt.Sprintf(" *%v)* %v\n", i+1, p.Name())
 	}
 	return text
 }
@@ -116,7 +136,7 @@ func rm(message *tgbotapi.Message) {
 	}
 
 	storage.Delete(participant)
-	sendMessageToChat(message.Chat.ID, fmt.Sprintf("Removed *%s*", participant.User.Name))
+	sendMessageToChat(message.Chat.ID, fmt.Sprintf("Removed *%s*", participant.Link()))
 
 	text := participantsText(chatId)
 	sendMessageToChat(chatId, text)
