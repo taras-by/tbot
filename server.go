@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -26,10 +27,6 @@ var (
 		"help":  help,
 	}
 )
-
-func reset(message *tgbotapi.Message) {
-	sendMessageToChat(message.Chat.ID, "Reset ...")
-}
 
 func server() (err error) {
 	token, err := ioutil.ReadFile(telegramTokenFile)
@@ -128,18 +125,41 @@ func participantsText(chatId int64) (text string) {
 }
 
 func rm(message *tgbotapi.Message) {
+	var participant store.Participant
+	var err error
 	chatId := message.Chat.ID
-	participant, err := storage.Find(strconv.Itoa(message.From.ID), message.Chat.ID)
-	if err != nil {
-		sendMessageToChat(chatId, "You are not a participant yet")
-		return
+	args := strings.TrimSpace(message.CommandArguments())
+
+	if args == "" {
+		participant, err = storage.Find(strconv.Itoa(message.From.ID), chatId)
+		if err != nil {
+			sendMessageToChat(chatId, "You are not a participant yet")
+			return
+		}
+	} else {
+		participant, err = storage.FindByName(args, chatId)
+		if err != nil {
+			sendMessageToChat(chatId, err.Error())
+			return
+		}
 	}
 
 	storage.Delete(participant)
-	sendMessageToChat(message.Chat.ID, fmt.Sprintf("Removed *%s*", participant.Link()))
+	sendMessageToChat(chatId, fmt.Sprintf("Removed *%s*", participant.Link()))
 
 	text := participantsText(chatId)
 	sendMessageToChat(chatId, text)
+}
+
+func reset(message *tgbotapi.Message) {
+	chatId := message.Chat.ID
+	err := storage.DeleteAll(chatId)
+	if err != nil {
+		sendMessageToChat(chatId, err.Error())
+		return
+	}
+
+	sendMessageToChat(chatId, "All participants was deleted")
 }
 
 func help(message *tgbotapi.Message) {

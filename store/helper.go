@@ -1,11 +1,10 @@
 package store
 
-import "strings"
+import (
+	"strings"
+)
 
 func Escape(s string) string {
-	s = strings.ReplaceAll(s, "@", "-")
-	s = strings.ReplaceAll(s, "*", "-")
-	s = strings.ReplaceAll(s, "`", "-")
-	s = strings.ReplaceAll(s, "_", "-")
-	return s
+	r := strings.NewReplacer("@", "-", "*", "-", "`", "-", "_", "-")
+	return r.Replace(s)
 }

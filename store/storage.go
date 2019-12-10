@@ -79,6 +79,18 @@ func (s *Storage) Delete(participant Participant) {
 	})
 }
 
+func (s *Storage) DeleteAll(chatId int64) error {
+	err := s.db.Update(func(tx *bolt.Tx) error {
+		chatsBkt := tx.Bucket([]byte(chatsBucketName))
+		chatBucketName := strconv.FormatInt(chatId, 10)
+		if e := chatsBkt.DeleteBucket([]byte(chatBucketName)); e != nil {
+			return errors.Wrapf(e, "Failed to delete participants")
+		}
+		return nil
+	})
+	return errors.Wrapf(err, "Failed to delete participants")
+}
+
 func (s *Storage) Find(key string, chatId int64) (participant Participant, err error) {
 	err = s.db.View(func(tx *bolt.Tx) (err error) {
 		var chatBkt *bolt.Bucket
@@ -99,6 +111,16 @@ func (s *Storage) Find(key string, chatId int64) (participant Participant, err e
 		return nil
 	})
 	return participant, err
+}
+
+func (s *Storage) FindByName(name string, chatId int64) (participant Participant, err error) {
+	participants := s.FindByChatId(chatId)
+	for _, p := range participants {
+		if p.Name() == name {
+			return p, nil
+		}
+	}
+	return participant, errors.Errorf("Participant with name \"%s\" not found", name)
 }
 
 func (s *Storage) FindAll() (participants []Participant) {
@@ -173,11 +195,12 @@ func (s *Storage) getChatBucket(tx *bolt.Tx, chatId int64) (*bolt.Bucket, error)
 }
 
 func (s *Storage) makeChatBucket(tx *bolt.Tx, chatId int64) (*bolt.Bucket, error) {
-	chatBkt := tx.Bucket([]byte(chatsBucketName))
-	if chatBkt == nil {
+	chatsBkt := tx.Bucket([]byte(chatsBucketName))
+	if chatsBkt == nil {
 		return nil, errors.Errorf("no bucket %s", chatsBucketName)
 	}
-	res, err := chatBkt.CreateBucketIfNotExists([]byte(strconv.FormatInt(chatId, 10)))
+	chatBucketName := strconv.FormatInt(chatId, 10)
+	res, err := chatsBkt.CreateBucketIfNotExists([]byte(chatBucketName))
 	if err != nil {
 		return nil, errors.Wrapf(err, "no bucket %s in store", chatId)
 	}
