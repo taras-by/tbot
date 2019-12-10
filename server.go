@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -19,13 +18,11 @@ var (
 	bot      *tgbotapi.BotAPI
 	storage  *store.Storage
 	commands = map[string]func(*tgbotapi.Message){
-		"/list":  list,
-		"/add":   add,
-		"/+":     add,
-		"/rm":    rm,
-		"/-":     rm,
-		"/start": help,
-		"/help":  help,
+		"list":  list,
+		"add":   add,
+		"rm":    rm,
+		"start": help,
+		"help":  help,
 	}
 )
 
@@ -60,14 +57,16 @@ func server() (err error) {
 
 		log.Printf("Message: [%s] %s", update.Message.From.UserName, update.Message.Text)
 
-		for command, funct := range commands {
-			text := update.Message.Text
-			if strings.HasPrefix(strings.ToLower(text), command) {
-				funct(update.Message)
-				log.Printf("Command: %v", command)
-			}
+		if update.Message.IsCommand() == false { // ignore any non-Command Updates
+			continue
 		}
 
+		for command, funct := range commands {
+			if update.Message.Command() == command {
+				log.Printf("Command: \"%v\", arguments: \"%v\"", update.Message.Command(), update.Message.CommandArguments())
+				funct(update.Message)
+			}
+		}
 	}
 	return nil
 }
