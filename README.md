@@ -1,6 +1,6 @@
 # tbot
 
-##Help:
+## Help:
     /list - participants list
     /add - add yourself or someone
     /rm - remove yourself or someone
@@ -9,7 +9,7 @@
     /start - help
     /help - help
 
-##Examples:
+## Examples:
      /add @smith
      /add My brother John
      /rm @smith
