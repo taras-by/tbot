@@ -28,6 +28,8 @@ var (
 		"start": help,
 		"help":  help,
 	}
+	linkArgsChecker    = regexp.MustCompile(`^@\S+$`)
+	integerArgsChecker = regexp.MustCompile(`^\d+$`)
 )
 
 func server() (err error) {
@@ -85,7 +87,6 @@ func add(message *tgbotapi.Message) {
 	chatId := message.Chat.ID
 	var participant store.Participant
 	args := strings.TrimSpace(message.CommandArguments())
-	integerChecker := regexp.MustCompile(`^\d+$`)
 
 	if args == "" {
 		participant = storage.Create(
@@ -99,8 +100,11 @@ func add(message *tgbotapi.Message) {
 				ChatId: chatId,
 			},
 		)
-	} else if integerChecker.Find([]byte(args)) != nil {
+	} else if integerArgsChecker.Find([]byte(args)) != nil {
 		sendMessageToChat(chatId, "Name as an number")
+		return
+	} else if linkArgsChecker.Find([]byte(args)) != nil {
+		sendMessageToChat(chatId, fmt.Sprintf("Add user by link %s ...", args))
 		return
 	} else {
 		participant = storage.Create(
@@ -136,8 +140,6 @@ func rm(message *tgbotapi.Message) {
 	var err error
 	chatId := message.Chat.ID
 	args := strings.TrimSpace(message.CommandArguments())
-	integerChecker := regexp.MustCompile(`^\d+$`)
-	linkChecker := regexp.MustCompile(`^@\S+$`)
 
 	if args == "" {
 		participant, err = storage.Find(strconv.Itoa(message.From.ID), chatId)
@@ -145,15 +147,15 @@ func rm(message *tgbotapi.Message) {
 			sendMessageToChat(chatId, "You are not a participant yet")
 			return
 		}
-	} else if linkChecker.Find([]byte(args)) != nil {
-		linkString := string(linkChecker.Find([]byte(args)))
+	} else if linkArgsChecker.Find([]byte(args)) != nil {
+		linkString := string(linkArgsChecker.Find([]byte(args)))
 		participant, err = storage.FindByLink(linkString, chatId)
 		if err != nil {
 			sendMessageToChat(chatId, err.Error())
 			return
 		}
-	} else if integerChecker.Find([]byte(args)) != nil {
-		numberString := string(integerChecker.Find([]byte(args)))
+	} else if integerArgsChecker.Find([]byte(args)) != nil {
+		numberString := string(integerArgsChecker.Find([]byte(args)))
 		number, err := strconv.Atoi(numberString)
 		if err != nil {
 			sendMessageToChat(chatId, err.Error())
@@ -199,13 +201,13 @@ func help(message *tgbotapi.Message) {
 		"/ping - turn to non-participants\n" +
 		"/start - help\n" +
 		"/help - help\n" +
-		"\n"+
-		"*Examples:*\n"+
-		"``` /add @smith\n"+
-		" /add My brother John\n"+
-		" /rm @smith\n"+
-		" /rm My brother John\n"+
-		" /rm 3\n"+
+		"\n" +
+		"*Examples:*\n" +
+		"``` /add @smith\n" +
+		" /add My brother John\n" +
+		" /rm @smith\n" +
+		" /rm My brother John\n" +
+		" /rm 3\n" +
 		"```\n" +
 		"The last example is the removal of the third participant\n"
 	sendMessageToChat(message.Chat.ID, text)
