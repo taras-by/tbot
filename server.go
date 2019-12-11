@@ -137,11 +137,19 @@ func rm(message *tgbotapi.Message) {
 	chatId := message.Chat.ID
 	args := strings.TrimSpace(message.CommandArguments())
 	integerChecker := regexp.MustCompile(`^\d+$`)
+	linkChecker := regexp.MustCompile(`^@\S+$`)
 
 	if args == "" {
 		participant, err = storage.Find(strconv.Itoa(message.From.ID), chatId)
 		if err != nil {
 			sendMessageToChat(chatId, "You are not a participant yet")
+			return
+		}
+	} else if linkChecker.Find([]byte(args)) != nil {
+		linkString := string(linkChecker.Find([]byte(args)))
+		participant, err = storage.FindByLink(linkString, chatId)
+		if err != nil {
+			sendMessageToChat(chatId, err.Error())
 			return
 		}
 	} else if integerChecker.Find([]byte(args)) != nil {

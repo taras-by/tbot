@@ -133,6 +133,16 @@ func (s *Storage) FindByName(name string, chatId int64) (participant Participant
 	return participant, errors.Errorf("Participant with name \"%s\" not found", name)
 }
 
+func (s *Storage) FindByLink(name string, chatId int64) (participant Participant, err error) {
+	participants := s.FindByChatId(chatId)
+	for _, p := range participants {
+		if p.Link() == name {
+			return p, nil
+		}
+	}
+	return participant, errors.Errorf("Participant with link %s not found", name)
+}
+
 func (s *Storage) FindAll() (participants []Participant) {
 	values := s.list(chatsBucketName)
 	participants = []Participant{}
