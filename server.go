@@ -101,10 +101,10 @@ func add(message *tgbotapi.Message) {
 			},
 		)
 	} else if integerArgsChecker.Find([]byte(args)) != nil {
-		sendMessageToChat(chatId, "Name as an number")
+		sendMessageToChat(chatId, "Fail. Name as an number")
 		return
 	} else if linkArgsChecker.Find([]byte(args)) != nil {
-		sendMessageToChat(chatId, fmt.Sprintf("Add user by link %s ...", args))
+		sendMessageToChat(chatId, fmt.Sprintf("Add user by link %s. Not implemented.", args))
 		return
 	} else {
 		participant = storage.Create(
@@ -214,7 +214,7 @@ func help(message *tgbotapi.Message) {
 }
 
 func ping(message *tgbotapi.Message) {
-	sendMessageToChat(message.Chat.ID, "Ping ...")
+	sendMessageToChat(message.Chat.ID, "Turn to non-participants... Not implemented.")
 }
 
 func sendMessageToChat(chatId int64, text string) {
