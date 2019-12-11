@@ -6,6 +6,7 @@ import (
 	"github.com/taras-by/tbot/store"
 	"io/ioutil"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -23,6 +24,7 @@ var (
 		"add":   add,
 		"rm":    rm,
 		"reset": reset,
+		"ping":  ping,
 		"start": help,
 		"help":  help,
 	}
@@ -82,8 +84,10 @@ func list(message *tgbotapi.Message) {
 func add(message *tgbotapi.Message) {
 	chatId := message.Chat.ID
 	var participant store.Participant
+	args := strings.TrimSpace(message.CommandArguments())
+	integerChecker := regexp.MustCompile(`^\d+$`)
 
-	if message.CommandArguments() == "" {
+	if args == "" {
 		participant = storage.Create(
 			store.Participant{
 				User: store.User{
@@ -95,11 +99,14 @@ func add(message *tgbotapi.Message) {
 				ChatId: chatId,
 			},
 		)
+	} else if integerChecker.Find([]byte(args)) != nil {
+		sendMessageToChat(chatId, "Name as an number")
+		return
 	} else {
 		participant = storage.Create(
 			store.Participant{
 				User: store.User{
-					Name: store.Escape(message.CommandArguments()),
+					Name: store.Escape(args),
 					Type: store.UserGuest,
 				},
 				Time:   time.Now(),
@@ -129,11 +136,24 @@ func rm(message *tgbotapi.Message) {
 	var err error
 	chatId := message.Chat.ID
 	args := strings.TrimSpace(message.CommandArguments())
+	integerChecker := regexp.MustCompile(`^\d+$`)
 
 	if args == "" {
 		participant, err = storage.Find(strconv.Itoa(message.From.ID), chatId)
 		if err != nil {
 			sendMessageToChat(chatId, "You are not a participant yet")
+			return
+		}
+	} else if integerChecker.Find([]byte(args)) != nil {
+		numberString := string(integerChecker.Find([]byte(args)))
+		number, err := strconv.Atoi(numberString)
+		if err != nil {
+			sendMessageToChat(chatId, err.Error())
+			return
+		}
+		participant, err = storage.FindByNumber(number, chatId)
+		if err != nil {
+			sendMessageToChat(chatId, err.Error())
 			return
 		}
 	} else {
@@ -163,7 +183,28 @@ func reset(message *tgbotapi.Message) {
 }
 
 func help(message *tgbotapi.Message) {
-	sendMessageToChat(message.Chat.ID, "Help: ...")
+	text := "*Help:*\n" +
+		"/list - participants list\n" +
+		"/add - add yourself or someone\n" +
+		"/rm - remove yourself or someone\n" +
+		"/reset - remove all\n" +
+		"/ping - turn to non-participants\n" +
+		"/start - help\n" +
+		"/help - help\n" +
+		"\n"+
+		"*Examples:*\n"+
+		"``` /add @smith\n"+
+		" /add My brother John\n"+
+		" /rm @smith\n"+
+		" /rm My brother John\n"+
+		" /rm 3\n"+
+		"```\n" +
+		"The last example is the removal of the third participant\n"
+	sendMessageToChat(message.Chat.ID, text)
+}
+
+func ping(message *tgbotapi.Message) {
+	sendMessageToChat(message.Chat.ID, "Ping ...")
 }
 
 func sendMessageToChat(chatId int64, text string) {

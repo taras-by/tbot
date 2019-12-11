@@ -113,6 +113,16 @@ func (s *Storage) Find(key string, chatId int64) (participant Participant, err e
 	return participant, err
 }
 
+func (s *Storage) FindByNumber(number int, chatId int64) (participant Participant, err error) {
+	participants := s.FindByChatId(chatId)
+	for i, p := range participants {
+		if number == i + 1 {
+			return p, nil
+		}
+	}
+	return participant, errors.Errorf("Participant with number *%d* not found", number)
+}
+
 func (s *Storage) FindByName(name string, chatId int64) (participant Participant, err error) {
 	participants := s.FindByChatId(chatId)
 	for _, p := range participants {
