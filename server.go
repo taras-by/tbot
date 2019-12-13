@@ -104,13 +104,13 @@ func add(message *tgbotapi.Message) {
 		sendMessageToChat(chatId, "Fail. Name as an number")
 		return
 	} else if linkArgsChecker.Find([]byte(args)) != nil {
-		sendMessageToChat(chatId, fmt.Sprintf("Add user by link %s. Not implemented.", args))
+		sendMessageToChat(chatId, fmt.Sprintf("Add user by link %s. Not implemented.", store.Escape(args)))
 		return
 	} else {
 		participant = storage.Create(
 			store.Participant{
 				User: store.User{
-					Name: store.Escape(args),
+					Name: args,
 					Type: store.UserGuest,
 				},
 				Time:   time.Now(),
@@ -118,7 +118,7 @@ func add(message *tgbotapi.Message) {
 			},
 		)
 	}
-	sendMessageToChat(chatId, fmt.Sprintf("Added *%s*", participant.Link()))
+	sendMessageToChat(chatId, fmt.Sprintf("Added %s", store.Escape(participant.Link())))
 	text := participantsText(chatId)
 	sendMessageToChat(chatId, text)
 }
@@ -130,7 +130,7 @@ func participantsText(chatId int64) (text string) {
 	}
 	text = "List of participants:\n"
 	for i, p := range participants {
-		text = text + fmt.Sprintf(" *%v)* %v\n", i+1, p.Name())
+		text = text + fmt.Sprintf(" *%v)* %v\n", i+1, store.Escape(p.Name()))
 	}
 	return text
 }
@@ -151,31 +151,31 @@ func rm(message *tgbotapi.Message) {
 		linkString := string(linkArgsChecker.Find([]byte(args)))
 		participant, err = storage.FindByLink(linkString, chatId)
 		if err != nil {
-			sendMessageToChat(chatId, err.Error())
+			sendMessageToChat(chatId, store.Escape(err.Error()))
 			return
 		}
 	} else if integerArgsChecker.Find([]byte(args)) != nil {
 		numberString := string(integerArgsChecker.Find([]byte(args)))
 		number, err := strconv.Atoi(numberString)
 		if err != nil {
-			sendMessageToChat(chatId, err.Error())
+			sendMessageToChat(chatId, store.Escape(err.Error()))
 			return
 		}
 		participant, err = storage.FindByNumber(number, chatId)
 		if err != nil {
-			sendMessageToChat(chatId, err.Error())
+			sendMessageToChat(chatId, store.Escape(err.Error()))
 			return
 		}
 	} else {
 		participant, err = storage.FindByName(args, chatId)
 		if err != nil {
-			sendMessageToChat(chatId, err.Error())
+			sendMessageToChat(chatId, store.Escape(err.Error()))
 			return
 		}
 	}
 
 	storage.Delete(participant)
-	sendMessageToChat(chatId, fmt.Sprintf("Removed *%s*", participant.Link()))
+	sendMessageToChat(chatId, fmt.Sprintf("Removed %s", store.Escape(participant.Link())))
 
 	text := participantsText(chatId)
 	sendMessageToChat(chatId, text)
@@ -185,7 +185,7 @@ func reset(message *tgbotapi.Message) {
 	chatId := message.Chat.ID
 	err := storage.DeleteAll(chatId)
 	if err != nil {
-		sendMessageToChat(chatId, err.Error())
+		sendMessageToChat(chatId, store.Escape(err.Error()))
 		return
 	}
 
@@ -199,7 +199,6 @@ func help(message *tgbotapi.Message) {
 		"/rm - remove yourself or someone\n" +
 		"/reset - remove all\n" +
 		"/ping - turn to non-participants\n" +
-		"/start - help\n" +
 		"/help - help\n" +
 		"\n" +
 		"*Examples:*\n" +
@@ -220,5 +219,9 @@ func ping(message *tgbotapi.Message) {
 func sendMessageToChat(chatId int64, text string) {
 	msg := tgbotapi.NewMessage(chatId, text)
 	msg.ParseMode = "markdown"
-	_, _ = bot.Send(msg)
+	_, err := bot.Send(msg)
+	if err != nil {
+		log.Print(err)
+		log.Print(text)
+	}
 }

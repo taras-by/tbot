@@ -6,7 +6,6 @@
     /rm - remove yourself or someone
     /reset - remove all
     /ping - turn to non-participants
-    /start - help
     /help - help
 
 ## Examples:

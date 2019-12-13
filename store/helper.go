@@ -5,6 +5,6 @@ import (
 )
 
 func Escape(s string) string {
-	r := strings.NewReplacer("@", "-", "*", "-", "`", "-", "_", "-")
+	r := strings.NewReplacer("*", "\\*", "`", "\\`", "_", "\\_")
 	return r.Replace(s)
 }
