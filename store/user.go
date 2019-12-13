@@ -6,9 +6,11 @@ import (
 )
 
 type User struct {
-	Id   string
-	Name string
-	Type UserType
+	Id        string
+	UserName  string
+	FirstName string
+	LastName  string
+	Type      UserType
 }
 
 type UserType string
@@ -22,5 +24,5 @@ func (u User) Uid() string {
 	if u.Id != "" {
 		return u.Id
 	}
-	return fmt.Sprintf("%x", md5.Sum([]byte(u.Name)))
+	return fmt.Sprintf("%x", md5.Sum([]byte(u.UserName)))
 }

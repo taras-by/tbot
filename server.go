@@ -92,16 +92,18 @@ func add(message *tgbotapi.Message) {
 		participant = storage.Create(
 			store.Participant{
 				User: store.User{
-					Id:   strconv.Itoa(message.From.ID),
-					Name: message.From.UserName,
-					Type: store.UserTelegram,
+					Id:        strconv.Itoa(message.From.ID),
+					UserName:  message.From.UserName,
+					FirstName: message.From.FirstName,
+					LastName:  message.From.LastName,
+					Type:      store.UserTelegram,
 				},
 				Time:   time.Now(),
 				ChatId: chatId,
 			},
 		)
 	} else if integerArgsChecker.Find([]byte(args)) != nil {
-		sendMessageToChat(chatId, "Fail. Name as an number")
+		sendMessageToChat(chatId, "Fail. UserName as an number")
 		return
 	} else if linkArgsChecker.Find([]byte(args)) != nil {
 		sendMessageToChat(chatId, fmt.Sprintf("Add user by link %s. Not implemented.", store.Escape(args)))
@@ -110,8 +112,8 @@ func add(message *tgbotapi.Message) {
 		participant = storage.Create(
 			store.Participant{
 				User: store.User{
-					Name: args,
-					Type: store.UserGuest,
+					UserName: args,
+					Type:     store.UserGuest,
 				},
 				Time:   time.Now(),
 				ChatId: chatId,

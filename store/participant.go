@@ -16,14 +16,19 @@ func (p *Participant) Id() string {
 
 func (p *Participant) Name() string {
 	if p.User.Type == UserTelegram {
-		return p.User.Name
+		if p.User.FirstName != "" {
+			if p.User.LastName != "" {
+				return p.User.FirstName + " " + p.User.LastName
+			}
+			return p.User.FirstName
+		}
 	}
-	return p.User.Name
+	return p.User.UserName
 }
 
 func (p *Participant) Link() string {
 	if p.User.Type == UserTelegram {
-		return "@" + p.User.Name
+		return "@" + p.User.UserName
 	}
-	return p.User.Name
+	return p.User.UserName
 }
