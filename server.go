@@ -28,7 +28,7 @@ var (
 		"start": help,
 		"help":  help,
 	}
-	linkArgsChecker    = regexp.MustCompile(`^@\S+$`)
+	linkArgsChecker    = regexp.MustCompile(`^@(\S+)$`)
 	integerArgsChecker = regexp.MustCompile(`^\d+$`)
 )
 
@@ -89,6 +89,18 @@ func add(message *tgbotapi.Message) {
 	args := strings.TrimSpace(message.CommandArguments())
 
 	if args == "" {
+		creationTime := time.Now()
+		existingParticipant, err := storage.FindByLink("@"+message.From.UserName, chatId)
+		if err == nil {
+			if existingParticipant.IsUnresolved() == true {
+				creationTime = existingParticipant.Time
+				storage.Delete(existingParticipant)
+				//sendMessageToChat(chatId, "Update unresolved")
+			} else {
+				sendMessageToChat(chatId, "You are already a participant")
+				return
+			}
+		}
 		participant = storage.Create(
 			store.Participant{
 				User: store.User{
@@ -98,16 +110,25 @@ func add(message *tgbotapi.Message) {
 					LastName:  message.From.LastName,
 					Type:      store.UserTelegram,
 				},
+				Time:   creationTime,
+				ChatId: chatId,
+			},
+		)
+	} else if integerArgsChecker.MatchString(args) {
+		sendMessageToChat(chatId, "Fail. UserName as an number")
+		return
+	} else if match := linkArgsChecker.FindStringSubmatch(args); len(match) == 2 {
+		userName := match[1]
+		participant = storage.Create(
+			store.Participant{
+				User: store.User{
+					UserName: userName,
+					Type:     store.UserUnresolved,
+				},
 				Time:   time.Now(),
 				ChatId: chatId,
 			},
 		)
-	} else if integerArgsChecker.Find([]byte(args)) != nil {
-		sendMessageToChat(chatId, "Fail. UserName as an number")
-		return
-	} else if linkArgsChecker.Find([]byte(args)) != nil {
-		sendMessageToChat(chatId, fmt.Sprintf("Add user by link %s. Not implemented.", store.Escape(args)))
-		return
 	} else {
 		participant = storage.Create(
 			store.Participant{
@@ -125,18 +146,6 @@ func add(message *tgbotapi.Message) {
 	sendMessageToChat(chatId, text)
 }
 
-func participantsText(chatId int64) (text string) {
-	participants := storage.FindByChatId(chatId)
-	if len(participants) == 0 {
-		return "No participants"
-	}
-	text = "List of participants:\n"
-	for i, p := range participants {
-		text = text + fmt.Sprintf(" *%v)* %v\n", i+1, store.Escape(p.Name()))
-	}
-	return text
-}
-
 func rm(message *tgbotapi.Message) {
 	var participant store.Participant
 	var err error
@@ -149,14 +158,14 @@ func rm(message *tgbotapi.Message) {
 			sendMessageToChat(chatId, "You are not a participant yet")
 			return
 		}
-	} else if linkArgsChecker.Find([]byte(args)) != nil {
+	} else if linkArgsChecker.MatchString(args) {
 		linkString := string(linkArgsChecker.Find([]byte(args)))
 		participant, err = storage.FindByLink(linkString, chatId)
 		if err != nil {
 			sendMessageToChat(chatId, store.Escape(err.Error()))
 			return
 		}
-	} else if integerArgsChecker.Find([]byte(args)) != nil {
+	} else if integerArgsChecker.MatchString(args) {
 		numberString := string(integerArgsChecker.Find([]byte(args)))
 		number, err := strconv.Atoi(numberString)
 		if err != nil {
@@ -194,13 +203,25 @@ func reset(message *tgbotapi.Message) {
 	sendMessageToChat(chatId, "All participants was deleted")
 }
 
+func participantsText(chatId int64) (text string) {
+	participants := storage.FindByChatId(chatId)
+	if len(participants) == 0 {
+		return "No participants"
+	}
+	text = "List of participants:\n"
+	for i, p := range participants {
+		text = text + fmt.Sprintf(" *%v)* %v\n", i+1, store.Escape(p.Name()))
+	}
+	return text
+}
+
 func help(message *tgbotapi.Message) {
 	text := "*Help:*\n" +
 		"/list - participants list\n" +
 		"/add - add yourself or someone\n" +
 		"/rm - remove yourself or someone\n" +
 		"/reset - remove all\n" +
-		"/ping - turn to non-participants\n" +
+		//"/ping - turn to non-participants\n" +
 		"/help - help\n" +
 		"\n" +
 		"*Examples:*\n" +

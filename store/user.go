@@ -16,13 +16,33 @@ type User struct {
 type UserType string
 
 const (
-	UserTelegram UserType = "telegram"
-	UserGuest    UserType = "guest"
+	UserTelegram   UserType = "telegram"
+	UserUnresolved UserType = "unresolved"
+	UserGuest      UserType = "guest"
 )
 
 func (u User) Uid() string {
 	if u.Id != "" {
 		return u.Id
 	}
-	return fmt.Sprintf("%x", md5.Sum([]byte(u.UserName)))
+	return fmt.Sprintf("%s:%x", u.Type, md5.Sum([]byte(u.UserName)))
+}
+
+func (u *User) Name() string {
+	if u.Type == UserTelegram {
+		if u.FirstName != "" {
+			if u.LastName != "" {
+				return u.FirstName + " " + u.LastName
+			}
+			return u.FirstName
+		}
+	}
+	return u.UserName
+}
+
+func (u *User) Link() string {
+	if u.Type == UserGuest {
+		return u.UserName
+	}
+	return "@" + u.UserName
 }

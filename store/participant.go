@@ -15,20 +15,13 @@ func (p *Participant) Id() string {
 }
 
 func (p *Participant) Name() string {
-	if p.User.Type == UserTelegram {
-		if p.User.FirstName != "" {
-			if p.User.LastName != "" {
-				return p.User.FirstName + " " + p.User.LastName
-			}
-			return p.User.FirstName
-		}
-	}
-	return p.User.UserName
+	return p.User.Name()
 }
 
 func (p *Participant) Link() string {
-	if p.User.Type == UserTelegram {
-		return "@" + p.User.UserName
-	}
-	return p.User.UserName
+	return p.User.Link()
+}
+
+func (p *Participant) IsUnresolved() bool {
+	return p.User.Type == UserUnresolved
 }
