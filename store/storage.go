@@ -12,21 +12,20 @@ import (
 
 const (
 	chatsBucketName = "chats"
-	DBPath          = "my.db"
 )
 
 type Storage struct {
 	db *bolt.DB
 }
 
-func NewStorage() (*Storage, error) {
+func NewStorage(storePath string) (*Storage, error) {
 
-	bdb, err := bolt.Open(DBPath, 0600, nil)
+	bdb, err := bolt.Open(storePath, 0600, nil)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to make boltdb for %s", DBPath)
+		return nil, errors.Wrapf(err, "failed to make boltdb for %s", storePath)
 	}
-	log.Printf("Storage opened")
+	log.Printf("Storage opened in %s", storePath)
 
 	bdb.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucket([]byte(chatsBucketName))

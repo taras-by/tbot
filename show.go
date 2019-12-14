@@ -8,7 +8,7 @@ import (
 
 func show() (err error) {
 
-	storage, err := store.NewStorage()
+	storage, err := store.NewStorage(Opts.StorePath)
 	if err != nil {
 		log.Fatal(err)
 	}

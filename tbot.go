@@ -5,16 +5,30 @@ import (
 	"log"
 	"os"
 )
+
 type command struct {
 	fs *flag.FlagSet
 	fn func(args []string) error
 }
 
+type Options struct {
+	TelegramToken string
+	StorePath     string
+}
+
+var (
+	Opts = Options{}
+)
+
+const (
+	defaultStorePath = "./bolt.db"
+)
+
 func main() {
 
 	commands := map[string]command{
 		"server": serverCmd(),
-		"show": showCmd(),
+		"show":   showCmd(),
 	}
 
 	fs := flag.NewFlagSet("tbot", flag.ExitOnError)
@@ -26,6 +40,10 @@ func main() {
 		fs.Usage()
 		os.Exit(1)
 	}
+
+	fs.StringVar(&Opts.TelegramToken, "telegram-token", os.Getenv("TELEGRAM_TOKEN"), "Token for Telegram")
+	fs.StringVar(&Opts.StorePath, "store-path", getEnv("STORE_PATH", defaultStorePath), "Path for storage")
+	fs.Parse(os.Args[2:])
 
 	if cmd, ok := commands[args[0]]; !ok {
 		log.Fatalf("Unknown command: %s", args[0])
@@ -44,4 +62,12 @@ func serverCmd() command {
 	return command{fn: func([]string) error {
 		return server()
 	}}
+}
+
+func getEnv(key string, value string) string {
+	v := os.Getenv(key)
+	if v == "" {
+		return value
+	}
+	return v
 }

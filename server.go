@@ -4,7 +4,6 @@ import (
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/taras-by/tbot/store"
-	"io/ioutil"
 	"log"
 	"regexp"
 	"strconv"
@@ -33,17 +32,13 @@ var (
 )
 
 func server() (err error) {
-	token, err := ioutil.ReadFile(telegramTokenFile)
+
+	bot, err = tgbotapi.NewBotAPI(Opts.TelegramToken)
 	if err != nil {
 		log.Panic(err.Error())
 	}
 
-	bot, err = tgbotapi.NewBotAPI(string(token))
-	if err != nil {
-		log.Panic(err.Error())
-	}
-
-	storage, err = store.NewStorage()
+	storage, err = store.NewStorage(Opts.StorePath)
 	if err != nil {
 		log.Fatal(err)
 	}
