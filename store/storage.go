@@ -6,6 +6,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
 	"log"
+	"sort"
 	"strconv"
 )
 
@@ -116,7 +117,7 @@ func (s *Storage) Find(key string, chatId int64) (participant Participant, err e
 func (s *Storage) FindByNumber(number int, chatId int64) (participant Participant, err error) {
 	participants := s.FindByChatId(chatId)
 	for i, p := range participants {
-		if number == i + 1 {
+		if number == i+1 {
 			return p, nil
 		}
 	}
@@ -154,6 +155,9 @@ func (s *Storage) FindAll() (participants []Participant) {
 		}
 		participants = append(participants, participant)
 	}
+	sort.Slice(participants, func(i, j int) bool {
+		return participants[i].Time.After(participants[j].Time)
+	})
 	return participants
 }
 
@@ -174,6 +178,9 @@ func (s *Storage) FindByChatId(chatId int64) (participants []Participant) {
 			return nil
 		})
 		return nil
+	})
+	sort.Slice(participants, func(i, j int) bool {
+		return participants[i].Time.Before(participants[j].Time)
 	})
 	return participants
 }

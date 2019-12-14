@@ -119,6 +119,11 @@ func add(message *tgbotapi.Message) {
 		return
 	} else if match := linkArgsChecker.FindStringSubmatch(args); len(match) == 2 {
 		userName := match[1]
+		existingParticipant, err := storage.FindByLink("@"+userName, chatId)
+		if err == nil && existingParticipant.Id() != "" {
+			sendMessageToChat(chatId, "User is already in the list of participants")
+			return
+		}
 		participant = storage.Create(
 			store.Participant{
 				User: store.User{
@@ -155,8 +160,11 @@ func rm(message *tgbotapi.Message) {
 	if args == "" {
 		participant, err = storage.Find(strconv.Itoa(message.From.ID), chatId)
 		if err != nil {
-			sendMessageToChat(chatId, "You are not a participant yet")
-			return
+			participant, err = storage.FindByLink("@"+message.From.UserName, chatId)
+			if err != nil {
+				sendMessageToChat(chatId, "You are not a participant yet")
+				return
+			}
 		}
 	} else if linkArgsChecker.MatchString(args) {
 		linkString := string(linkArgsChecker.Find([]byte(args)))
