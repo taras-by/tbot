@@ -240,7 +240,7 @@ func help(message *tgbotapi.Message) {
 }
 
 func ping(message *tgbotapi.Message) {
-	sendMessageToChat(message.Chat.ID, "Turn to non-participants... Not implemented.")
+	sendMessageToChat(message.Chat.ID, "Turn to non-participants... *Not implemented*.\nWelcome to https://github.com/taras-by/tbot")
 }
 
 func sendMessageToChat(chatId int64, text string) {

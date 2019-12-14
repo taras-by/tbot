@@ -17,7 +17,7 @@
 
 The last example is the removal of the third participant
 
-## Run
+## Run:
     go install
     sudo mkdir /var/lib/tbot
     sudo chmod 777 /var/lib/tbot
