@@ -52,12 +52,9 @@ tbotd.service file:
     Group = tbot
     EnvironmentFile = -/var/lib/tbot/environment
     ExecStart = /usr/bin/tbot server
-    Restart = on-abort
-    StartLimitInterval = 60
-    StartLimitBurst = 10
-    
-    [Install]
-    WantedBy = multi-user.target
+    PIDFile = /var/run/tbotd.pid
+    Restart=always
+    RestartSec=60
 
 Run service: 
     
