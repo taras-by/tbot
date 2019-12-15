@@ -2,6 +2,7 @@ package store
 
 import (
 	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 )
 
@@ -22,10 +23,12 @@ const (
 )
 
 func (u User) Uid() string {
-	if u.Id != "" {
-		return u.Id
+	id := u.Id
+	if id == "" {
+		s := md5.Sum([]byte(u.UserName))
+		id = hex.EncodeToString(s[:])
 	}
-	return fmt.Sprintf("%s:%x", u.Type, md5.Sum([]byte(u.UserName)))
+	return fmt.Sprintf("%s:%s", u.Type, id)
 }
 
 func (u *User) Name() string {

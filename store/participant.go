@@ -1,6 +1,8 @@
 package store
 
 import (
+	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -11,6 +13,9 @@ type Participant struct {
 }
 
 func (p *Participant) Id() string {
+	if chatId := strconv.FormatInt(p.ChatId, 10); chatId != "" {
+		return fmt.Sprintf("%s.%s", chatId, p.User.Uid())
+	}
 	return p.User.Uid()
 }
 
