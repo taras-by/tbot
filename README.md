@@ -53,8 +53,11 @@ tbotd.service file:
     EnvironmentFile = -/var/lib/tbot/environment
     ExecStart = /usr/bin/tbot server
     PIDFile = /var/run/tbotd.pid
-    Restart=always
-    RestartSec=60
+    Restart = always
+    RestartSec = 60
+    
+    [Install]
+    WantedBy = multi-user.target
 
 Run service: 
     
