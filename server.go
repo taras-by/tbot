@@ -33,6 +33,8 @@ var (
 
 func server() (err error) {
 
+	printVersion()
+
 	bot, err = tgbotapi.NewBotAPI(Opts.TelegramToken)
 	if err != nil {
 		log.Printf("Telegram connection Error. Token: %s", Opts.TelegramToken)

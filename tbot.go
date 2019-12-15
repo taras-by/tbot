@@ -2,8 +2,10 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
+	"runtime"
 )
 
 type command struct {
@@ -71,3 +73,20 @@ func getEnv(key string, value string) string {
 	}
 	return v
 }
+
+func printVersion() {
+	fmt.Printf("Version: %s\nCommit: %s\nRuntime: %s %s/%s\nDate: %s\n",
+		Version,
+		Commit,
+		runtime.Version(),
+		runtime.GOOS,
+		runtime.GOARCH,
+		Date,
+	)
+}
+
+var (
+	Commit  string
+	Date    string
+	Version string
+)
