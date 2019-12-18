@@ -120,7 +120,7 @@ func (s *Storage) FindByNumber(number int, chatId int64) (participant Participan
 			return p, nil
 		}
 	}
-	return participant, errors.Errorf("Participant with number *%d* not found", number)
+	return participant, errors.Errorf("Participant with number %d not found", number)
 }
 
 func (s *Storage) FindByName(name string, chatId int64) (participant Participant, err error) {

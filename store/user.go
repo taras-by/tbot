@@ -44,6 +44,9 @@ func (u *User) Name() string {
 }
 
 func (u *User) Link() string {
+	if u.UserName == "" {
+		return u.Name()
+	}
 	if u.Type == UserGuest {
 		return u.UserName
 	}

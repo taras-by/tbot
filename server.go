@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	telegramTokenFile = "telegram_token"
+	maxLengthStringArgument = 50
 )
 
 var (
@@ -85,6 +85,10 @@ func add(message *tgbotapi.Message) {
 	chatId := message.Chat.ID
 	var participant store.Participant
 	args := strings.TrimSpace(message.CommandArguments())
+	if len([]rune(args)) > maxLengthStringArgument {
+		sendMessageToChat(chatId, store.Escape("Parameter too long"))
+		return
+	}
 
 	if args == "" {
 		creationTime := time.Now()
@@ -154,6 +158,10 @@ func rm(message *tgbotapi.Message) {
 	var err error
 	chatId := message.Chat.ID
 	args := strings.TrimSpace(message.CommandArguments())
+	if len([]rune(args)) > maxLengthStringArgument {
+		sendMessageToChat(chatId, store.Escape("Parameter too long"))
+		return
+	}
 
 	if args == "" {
 		participant, err = storage.Find(strconv.Itoa(message.From.ID), chatId)
@@ -175,7 +183,7 @@ func rm(message *tgbotapi.Message) {
 		numberString := string(integerArgsChecker.Find([]byte(args)))
 		number, err := strconv.Atoi(numberString)
 		if err != nil {
-			sendMessageToChat(chatId, store.Escape(err.Error()))
+			sendMessageToChat(chatId, "Wrong parameter")
 			return
 		}
 		participant, err = storage.FindByNumber(number, chatId)
