@@ -245,7 +245,8 @@ func help(message *tgbotapi.Message) {
 		" /rm My brother John\n" +
 		" /rm 3\n" +
 		"```\n" +
-		"The last example is the removal of the third participant\n"
+		"The last example is the removal of the third participant\n\n" +
+		"_Version: " + Version + "_"
 	sendMessageToChat(message.Chat.ID, text)
 }
 

@@ -62,4 +62,4 @@ tbotd.service file:
 Run service: 
     
     sudo systemctl start tbotd
-    systemctl enable tbotd.service
+    sudo systemctl enable tbotd.service

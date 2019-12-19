@@ -88,5 +88,5 @@ func printVersion() {
 var (
 	Commit  string
 	Date    string
-	Version string
+	Version = "0.0"
 )
