@@ -16,20 +16,30 @@ const (
 )
 
 var (
-	bot      *tgbotapi.BotAPI
-	storage  *store.Storage
-	commands = map[string]func(*tgbotapi.Message){
-		"list":  list,
-		"add":   add,
-		"rm":    rm,
-		"reset": reset,
-		"ping":  ping,
-		"start": help,
-		"help":  help,
+	bot     *tgbotapi.BotAPI
+	storage *store.Storage
+	routes  = []route{
+		{`add`, ``, addMe},
+		{`add`, `^@(\S+)$`, addByLink},
+		{`add`, `^\d+$`, addByNumber},
+		{`add`, `^[\w\s\.,]+$`, addByName},
+		{`rm`, ``, removeMe},
+		{`rm`, `^@(\S+)$`, removeByLink},
+		{`rm`, `^\d+$`, removeByNumber},
+		{`rm`, `^[\w\s\.,]+$`, removeByName},
+		{`list`, ``, list},
+		{`ping`, ``, ping},
+		{`reset`, ``, reset},
+		{`start`, ``, help},
+		{`help`, ``, help},
 	}
-	linkArgsChecker    = regexp.MustCompile(`^@(\S+)$`)
-	integerArgsChecker = regexp.MustCompile(`^\d+$`)
 )
+
+type route struct {
+	BotCommand    string
+	ArgExpression string
+	Command       func(int64, string, *regexp.Regexp, *tgbotapi.Message)
+}
 
 func server() (err error) {
 
@@ -65,136 +75,145 @@ func server() (err error) {
 			continue
 		}
 
-		for command, funct := range commands {
-			if update.Message.Command() == command {
-				log.Printf("Command: \"%v\", arguments: \"%v\"", update.Message.Command(), update.Message.CommandArguments())
-				funct(update.Message)
+		args := strings.TrimSpace(update.Message.CommandArguments())
+		cmd := update.Message.Command()
+		chatId := update.Message.Chat.ID
+
+		if len([]rune(args)) > maxLengthStringArgument {
+			sendMessageToChat(chatId, store.Escape("Parameter too long"))
+			continue
+		}
+
+		commandIsOk := false
+		for _, route := range routes {
+
+			checker := regexp.MustCompile(route.ArgExpression)
+			argsIsMatched := false
+
+			if route.ArgExpression != "" && checker.MatchString(args) {
+				argsIsMatched = true
 			}
+
+			if route.ArgExpression == "" && args == "" {
+				argsIsMatched = true
+			}
+
+			if route.BotCommand == cmd && argsIsMatched {
+				commandIsOk = true
+				log.Printf("Command: \"%v\", arguments: \"%v\"", cmd, args)
+				route.Command(chatId, args, checker, update.Message)
+				break
+			}
+		}
+		if commandIsOk == false {
+			sendMessageToChat(chatId, store.Escape("Wrong command"))
 		}
 	}
 	return nil
 }
 
-func list(message *tgbotapi.Message) {
-	chatId := message.Chat.ID
+func list(chatId int64, args string, checker *regexp.Regexp, message *tgbotapi.Message) {
 	text := participantsText(chatId)
 	sendMessageToChat(chatId, text)
 }
 
-func add(message *tgbotapi.Message) {
-	chatId := message.Chat.ID
-	var participant store.Participant
-	args := strings.TrimSpace(message.CommandArguments())
-	if len([]rune(args)) > maxLengthStringArgument {
-		sendMessageToChat(chatId, store.Escape("Parameter too long"))
-		return
-	}
+func addMe(chatId int64, args string, checker *regexp.Regexp, message *tgbotapi.Message) {
 
-	if args == "" {
-		creationTime := time.Now()
-		existingParticipant, err := storage.FindByLink("@"+message.From.UserName, chatId)
-		if err == nil {
-			if existingParticipant.IsUnresolved() == true {
-				creationTime = existingParticipant.Time
-				storage.Delete(existingParticipant)
-				//sendMessageToChat(chatId, "Update unresolved")
-			} else {
-				sendMessageToChat(chatId, "You are already a participant")
-				return
-			}
-		}
-		participant = storage.Create(
-			store.Participant{
-				User: store.User{
-					Id:        strconv.Itoa(message.From.ID),
-					UserName:  message.From.UserName,
-					FirstName: message.From.FirstName,
-					LastName:  message.From.LastName,
-					Type:      store.UserTelegram,
-				},
-				Time:   creationTime,
-				ChatId: chatId,
-			},
-		)
-	} else if integerArgsChecker.MatchString(args) {
-		sendMessageToChat(chatId, "Fail. UserName as an number")
-		return
-	} else if match := linkArgsChecker.FindStringSubmatch(args); len(match) == 2 {
-		userName := match[1]
-		existingParticipant, err := storage.FindByLink("@"+userName, chatId)
-		if err == nil && existingParticipant.Id() != "" {
-			sendMessageToChat(chatId, "User is already in the list of participants")
+	creationTime := time.Now()
+	existingParticipant, err := storage.FindByLink("@"+message.From.UserName, chatId)
+	if err == nil {
+		if existingParticipant.IsUnresolved() == true {
+			creationTime = existingParticipant.Time
+			storage.Delete(existingParticipant)
+			//sendMessageToChat(chatId, "Update unresolved")
+		} else {
+			sendMessageToChat(chatId, "You are already a participant")
 			return
 		}
-		participant = storage.Create(
-			store.Participant{
-				User: store.User{
-					UserName: userName,
-					Type:     store.UserUnresolved,
-				},
-				Time:   time.Now(),
-				ChatId: chatId,
-			},
-		)
-	} else {
-		participant = storage.Create(
-			store.Participant{
-				User: store.User{
-					UserName: args,
-					Type:     store.UserGuest,
-				},
-				Time:   time.Now(),
-				ChatId: chatId,
-			},
-		)
 	}
+
+	participant := storage.Create(
+		store.Participant{
+			User: store.User{
+				Id:        strconv.Itoa(message.From.ID),
+				UserName:  message.From.UserName,
+				FirstName: message.From.FirstName,
+				LastName:  message.From.LastName,
+				Type:      store.UserTelegram,
+			},
+			Time:   creationTime,
+			ChatId: chatId,
+		},
+	)
+
 	sendMessageToChat(chatId, fmt.Sprintf("Added %s", store.Escape(participant.Link())))
 	text := participantsText(chatId)
 	sendMessageToChat(chatId, text)
 }
 
-func rm(message *tgbotapi.Message) {
-	var participant store.Participant
-	var err error
-	chatId := message.Chat.ID
-	args := strings.TrimSpace(message.CommandArguments())
-	if len([]rune(args)) > maxLengthStringArgument {
-		sendMessageToChat(chatId, store.Escape("Parameter too long"))
+func addByLink(chatId int64, args string, checker *regexp.Regexp, message *tgbotapi.Message) {
+
+	match := checker.FindStringSubmatch(args)
+	if len(match) != 2 {
+		sendMessageToChat(chatId, "Error")
 		return
 	}
 
-	if args == "" {
-		participant, err = storage.Find(strconv.Itoa(message.From.ID), chatId)
+	userName := match[1]
+	existingParticipant, err := storage.FindByLink("@"+userName, chatId)
+	if err == nil && existingParticipant.Id() != "" {
+		sendMessageToChat(chatId, "User is already in the list of participants")
+		return
+	}
+
+	participant := storage.Create(
+		store.Participant{
+			User: store.User{
+				UserName: userName,
+				Type:     store.UserUnresolved,
+			},
+			Time:   time.Now(),
+			ChatId: chatId,
+		},
+	)
+
+	sendMessageToChat(chatId, fmt.Sprintf("Added %s", store.Escape(participant.Link())))
+	text := participantsText(chatId)
+	sendMessageToChat(chatId, text)
+}
+
+func addByName(chatId int64, args string, checker *regexp.Regexp, message *tgbotapi.Message) {
+
+	participant := storage.Create(
+		store.Participant{
+			User: store.User{
+				UserName: args,
+				Type:     store.UserGuest,
+			},
+			Time:   time.Now(),
+			ChatId: chatId,
+		},
+	)
+
+	sendMessageToChat(chatId, fmt.Sprintf("Added %s", store.Escape(participant.Link())))
+	text := participantsText(chatId)
+	sendMessageToChat(chatId, text)
+}
+
+func addByNumber(chatId int64, args string, checker *regexp.Regexp, message *tgbotapi.Message) {
+	sendMessageToChat(chatId, "Fail. UserName as an number")
+}
+
+func removeMe(chatId int64, args string, checker *regexp.Regexp, message *tgbotapi.Message) {
+
+	var participant store.Participant
+	var err error
+
+	participant, err = storage.Find(strconv.Itoa(message.From.ID), chatId)
+	if err != nil {
+		participant, err = storage.FindByLink("@"+message.From.UserName, chatId)
 		if err != nil {
-			participant, err = storage.FindByLink("@"+message.From.UserName, chatId)
-			if err != nil {
-				sendMessageToChat(chatId, "You are not a participant yet")
-				return
-			}
-		}
-	} else if linkArgsChecker.MatchString(args) {
-		linkString := string(linkArgsChecker.Find([]byte(args)))
-		participant, err = storage.FindByLink(linkString, chatId)
-		if err != nil {
-			sendMessageToChat(chatId, store.Escape(err.Error()))
-			return
-		}
-	} else if integerArgsChecker.MatchString(args) {
-		numberString := string(integerArgsChecker.Find([]byte(args)))
-		number, err := strconv.Atoi(numberString)
-		if err != nil {
-			sendMessageToChat(chatId, "Wrong parameter")
-			return
-		}
-		participant, err = storage.FindByNumber(number, chatId)
-		if err != nil {
-			sendMessageToChat(chatId, store.Escape(err.Error()))
-			return
-		}
-	} else {
-		participant, err = storage.FindByName(args, chatId)
-		if err != nil {
-			sendMessageToChat(chatId, store.Escape(err.Error()))
+			sendMessageToChat(chatId, "You are not a participant yet")
 			return
 		}
 	}
@@ -206,8 +225,69 @@ func rm(message *tgbotapi.Message) {
 	sendMessageToChat(chatId, text)
 }
 
-func reset(message *tgbotapi.Message) {
-	chatId := message.Chat.ID
+func removeByNumber(chatId int64, args string, checker *regexp.Regexp, message *tgbotapi.Message) {
+
+	var participant store.Participant
+	var err error
+
+	numberString := string(checker.Find([]byte(args)))
+	number, err := strconv.Atoi(numberString)
+	if err != nil {
+		sendMessageToChat(chatId, "Wrong parameter")
+		return
+	}
+
+	participant, err = storage.FindByNumber(number, chatId)
+	if err != nil {
+		sendMessageToChat(chatId, store.Escape(err.Error()))
+		return
+	}
+
+	storage.Delete(participant)
+	sendMessageToChat(chatId, fmt.Sprintf("Removed %s", store.Escape(participant.Link())))
+
+	text := participantsText(chatId)
+	sendMessageToChat(chatId, text)
+}
+
+func removeByLink(chatId int64, args string, checker *regexp.Regexp, message *tgbotapi.Message) {
+
+	var participant store.Participant
+	var err error
+
+	linkString := string(checker.Find([]byte(args)))
+	participant, err = storage.FindByLink(linkString, chatId)
+	if err != nil {
+		sendMessageToChat(chatId, store.Escape(err.Error()))
+		return
+	}
+
+	storage.Delete(participant)
+	sendMessageToChat(chatId, fmt.Sprintf("Removed %s", store.Escape(participant.Link())))
+
+	text := participantsText(chatId)
+	sendMessageToChat(chatId, text)
+}
+
+func removeByName(chatId int64, args string, checker *regexp.Regexp, message *tgbotapi.Message) {
+
+	var participant store.Participant
+	var err error
+
+	participant, err = storage.FindByName(args, chatId)
+	if err != nil {
+		sendMessageToChat(chatId, store.Escape(err.Error()))
+		return
+	}
+
+	storage.Delete(participant)
+	sendMessageToChat(chatId, fmt.Sprintf("Removed %s", store.Escape(participant.Link())))
+
+	text := participantsText(chatId)
+	sendMessageToChat(chatId, text)
+}
+
+func reset(chatId int64, args string, checker *regexp.Regexp, message *tgbotapi.Message) {
 	err := storage.DeleteAll(chatId)
 	if err != nil {
 		sendMessageToChat(chatId, store.Escape(err.Error()))
@@ -217,19 +297,7 @@ func reset(message *tgbotapi.Message) {
 	sendMessageToChat(chatId, "All participants was deleted")
 }
 
-func participantsText(chatId int64) (text string) {
-	participants := storage.FindByChatId(chatId)
-	if len(participants) == 0 {
-		return "No participants"
-	}
-	text = "List of participants:\n"
-	for i, p := range participants {
-		text = text + fmt.Sprintf(" *%v)* %v\n", i+1, store.Escape(p.Name()))
-	}
-	return text
-}
-
-func help(message *tgbotapi.Message) {
+func help(chatId int64, args string, checker *regexp.Regexp, message *tgbotapi.Message) {
 	text := "*Help:*\n" +
 		"/list - participants list\n" +
 		"/add - add yourself or someone\n" +
@@ -247,11 +315,23 @@ func help(message *tgbotapi.Message) {
 		"```\n" +
 		"The last example is the removal of the third participant\n\n" +
 		"_Version: " + Version + "_"
-	sendMessageToChat(message.Chat.ID, text)
+	sendMessageToChat(chatId, text)
 }
 
-func ping(message *tgbotapi.Message) {
-	sendMessageToChat(message.Chat.ID, "Turn to non-participants... *Not implemented*.\nWelcome to https://github.com/taras-by/tbot")
+func ping(chatId int64, args string, checker *regexp.Regexp, message *tgbotapi.Message) {
+	sendMessageToChat(chatId, "Turn to non-participants... *Not implemented*.\nWelcome to https://github.com/taras-by/tbot")
+}
+
+func participantsText(chatId int64) (text string) {
+	participants := storage.FindByChatId(chatId)
+	if len(participants) == 0 {
+		return "No participants"
+	}
+	text = "List of participants:\n"
+	for i, p := range participants {
+		text = text + fmt.Sprintf(" *%v)* %v\n", i+1, store.Escape(p.Name()))
+	}
+	return text
 }
 
 func sendMessageToChat(chatId int64, text string) {
