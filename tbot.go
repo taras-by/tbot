@@ -2,10 +2,8 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
-	"runtime"
 )
 
 type command struct {
@@ -13,13 +11,11 @@ type command struct {
 	fn func(args []string) error
 }
 
-type Options struct {
-	TelegramToken string
-	StorePath     string
-}
-
 var (
-	Opts = Options{}
+	Opts    = options{}
+	Commit  = "Unknown"
+	Date    = "Unknown"
+	Version = "Unknown"
 )
 
 const (
@@ -35,7 +31,10 @@ func main() {
 
 	fs := flag.NewFlagSet("tbot", flag.ExitOnError)
 
-	fs.Parse(os.Args[1:])
+	err := fs.Parse(os.Args[1:])
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	args := fs.Args()
 	if len(args) == 0 {
@@ -45,7 +44,11 @@ func main() {
 
 	fs.StringVar(&Opts.TelegramToken, "telegram-token", os.Getenv("TELEGRAM_TOKEN"), "Token for Telegram")
 	fs.StringVar(&Opts.StorePath, "store-path", getEnv("STORE_PATH", defaultStorePath), "Path for storage")
-	fs.Parse(os.Args[2:])
+
+	err = fs.Parse(os.Args[2:])
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	if cmd, ok := commands[args[0]]; !ok {
 		log.Fatalf("Unknown command: %s", args[0])
@@ -62,7 +65,10 @@ func showCmd() command {
 
 func serverCmd() command {
 	return command{fn: func([]string) error {
-		return server()
+		a := newApp()
+		a.printVersion()
+		s := a.newServer()
+		return s.Run()
 	}}
 }
 
@@ -73,20 +79,3 @@ func getEnv(key string, value string) string {
 	}
 	return v
 }
-
-func printVersion() {
-	fmt.Printf("Version: %s\nCommit: %s\nRuntime: %s %s/%s\nDate: %s\n",
-		Version,
-		Commit,
-		runtime.Version(),
-		runtime.GOOS,
-		runtime.GOARCH,
-		Date,
-	)
-}
-
-var (
-	Commit  string
-	Date    string
-	Version = "0.0"
-)
