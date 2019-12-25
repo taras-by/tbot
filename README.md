@@ -31,7 +31,7 @@ The last example is the removal of the third participant
     
 ## Run manually    
     
-    sudo -u tbot env $(sudo cat /var/lib/tbot/environment | xargs) tbot server
+    sudo -u tbot env $(sudo cat /var/lib/tbot/environment | xargs) tbot run
     
 ## Run as service
 Create config file:
@@ -51,7 +51,7 @@ tbotd.service file:
     User = tbot
     Group = tbot
     EnvironmentFile = -/var/lib/tbot/environment
-    ExecStart = /usr/bin/tbot server
+    ExecStart = /usr/bin/tbot run
     PIDFile = /var/run/tbotd.pid
     Restart = always
     RestartSec = 60
