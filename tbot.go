@@ -25,8 +25,8 @@ const (
 func main() {
 
 	commands := map[string]command{
-		"server": serverCmd(),
-		"show":   showCmd(),
+		"run":  runCmd(),
+		"show": showCmd(),
 	}
 
 	fs := flag.NewFlagSet("tbot", flag.ExitOnError)
@@ -63,11 +63,11 @@ func showCmd() command {
 	}}
 }
 
-func serverCmd() command {
+func runCmd() command {
 	return command{fn: func([]string) error {
 		a := newApp()
-		a.printVersion()
-		s := a.newServer()
+		defer a.storage.Close()
+		s := a.makeBotService()
 		return s.Run()
 	}}
 }

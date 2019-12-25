@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
-	srv "github.com/taras-by/tbot/server"
 	"github.com/taras-by/tbot/store"
+	tlg "github.com/taras-by/tbot/telegram"
 	"log"
 	"runtime"
 )
@@ -19,7 +19,6 @@ type app struct {
 	commit  string
 	date    string
 	version string
-	bot     *tgbotapi.BotAPI
 	storage *store.Storage
 }
 
@@ -31,14 +30,9 @@ func newApp() (a *app) {
 		date:    Date,
 		version: Version,
 	}
+	a.printVersion()
 
 	var err error
-
-	a.bot, err = tgbotapi.NewBotAPI(a.options.TelegramToken)
-	if err != nil {
-		log.Printf("Telegram connection Error. Token: %s", a.options.TelegramToken)
-		log.Panic(err.Error())
-	}
 
 	a.storage, err = store.NewStorage(a.options.StorePath)
 	if err != nil {
@@ -49,11 +43,25 @@ func newApp() (a *app) {
 	return a
 }
 
-func (a *app) newServer() (s *srv.Server) {
-	return &srv.Server{
-		Bot:     a.bot,
+func (a *app) makeBotService() (s *tlg.BotService) {
+
+	bot, err := tgbotapi.NewBotAPI(a.options.TelegramToken)
+	if err != nil {
+		log.Printf("Telegram connection Error. Token: %s", a.options.TelegramToken)
+		log.Panic(err.Error())
+	}
+	log.Printf("Authorized on account %s", bot.Self.UserName)
+
+	handler := &tlg.MessageHandler{
+		Bot:     bot,
 		Storage: a.storage,
 		Version: a.version,
+	}
+	handler.Init()
+
+	return &tlg.BotService{
+		Bot: bot,
+		Handler: handler,
 	}
 }
 
