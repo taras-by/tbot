@@ -66,7 +66,7 @@ func showCmd() command {
 func runCmd() command {
 	return command{fn: func([]string) error {
 		a := newApp()
-		defer a.storage.Close()
+		defer a.Close()
 		s := a.makeBotService()
 		return s.Run()
 	}}

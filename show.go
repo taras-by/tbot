@@ -2,19 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/taras-by/tbot/store"
-	"log"
 )
 
 func show() (err error) {
+	a := newApp()
+	defer a.Close()
 
-	storage, err := store.NewStorage(Opts.StorePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer storage.Close()
-
-	for _, p := range storage.FindAll() {
+	for _, p := range a.storage.FindAll() {
 		fmt.Printf("Participant: %v\n", p)
 	}
 

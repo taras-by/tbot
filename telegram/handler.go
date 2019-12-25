@@ -13,6 +13,7 @@ import (
 
 const (
 	maxLengthStringArgument = 50
+	maxParticipants         = 100
 )
 
 type MessageHandler struct {
@@ -33,24 +34,6 @@ type conversation struct {
 	args    string
 	checker *regexp.Regexp
 	message *tgbotapi.Message
-}
-
-func (h *MessageHandler) Init() {
-	h.routes = []route{
-		{`add`, ``, h.addMe},
-		{`add`, `^@(\S+)$`, h.addByLink},
-		{`add`, `^\d+$`, h.addByNumber},
-		{`add`, `^.+$`, h.addByName},
-		{`rm`, ``, h.removeMe},
-		{`rm`, `^@(\S+)$`, h.removeByLink},
-		{`rm`, `^\d+$`, h.removeByNumber},
-		{`rm`, `^.+$`, h.removeByName},
-		{`list`, ``, h.list},
-		{`ping`, ``, h.ping},
-		{`reset`, ``, h.reset},
-		{`start`, ``, h.help},
-		{`help`, ``, h.help},
-	}
 }
 
 func (h *MessageHandler) handle(message *tgbotapi.Message) {
@@ -128,6 +111,11 @@ func (h *MessageHandler) addMe(c conversation) {
 		}
 	}
 
+	if h.Storage.CountByChatId(c.chatId) >= maxParticipants {
+		h.sendMessageToChat(c.chatId, fmt.Sprintf("Maximum chat participants: *%v*", maxParticipants))
+		return
+	}
+
 	participant := h.Storage.Create(
 		store.Participant{
 			User: store.User{
@@ -142,8 +130,8 @@ func (h *MessageHandler) addMe(c conversation) {
 		},
 	)
 
-	h.sendMessageToChat(c.chatId, fmt.Sprintf("Added %s", store.Escape(participant.Link())))
-	text := h.participantsText(c.chatId)
+	text := fmt.Sprintf("*Added %s*", store.Escape(participant.Link())) + "\n" +
+		h.participantsText(c.chatId)
 	h.sendMessageToChat(c.chatId, text)
 }
 
@@ -162,6 +150,11 @@ func (h *MessageHandler) addByLink(c conversation) {
 		return
 	}
 
+	if h.Storage.CountByChatId(c.chatId) >= maxParticipants {
+		h.sendMessageToChat(c.chatId, fmt.Sprintf("Maximum chat participants: *%v*", maxParticipants))
+		return
+	}
+
 	participant := h.Storage.Create(
 		store.Participant{
 			User: store.User{
@@ -173,12 +166,23 @@ func (h *MessageHandler) addByLink(c conversation) {
 		},
 	)
 
-	h.sendMessageToChat(c.chatId, fmt.Sprintf("Added %s", store.Escape(participant.Link())))
-	text := h.participantsText(c.chatId)
+	text := fmt.Sprintf("*Added %s*", store.Escape(participant.Link())) + "\n" +
+		h.participantsText(c.chatId)
 	h.sendMessageToChat(c.chatId, text)
 }
 
 func (h *MessageHandler) addByName(c conversation) {
+
+	existingParticipant, err := h.Storage.FindByName(c.args, c.chatId)
+	if err == nil && existingParticipant.Id() != "" {
+		h.sendMessageToChat(c.chatId, "User is already in the list of participants")
+		return
+	}
+
+	if h.Storage.CountByChatId(c.chatId) >= maxParticipants {
+		h.sendMessageToChat(c.chatId, fmt.Sprintf("Maximum chat participants: *%v*", maxParticipants))
+		return
+	}
 
 	participant := h.Storage.Create(
 		store.Participant{
@@ -191,8 +195,8 @@ func (h *MessageHandler) addByName(c conversation) {
 		},
 	)
 
-	h.sendMessageToChat(c.chatId, fmt.Sprintf("Added %s", store.Escape(participant.Link())))
-	text := h.participantsText(c.chatId)
+	text := fmt.Sprintf("*Added %s*", store.Escape(participant.Link())) + "\n" +
+		h.participantsText(c.chatId)
 	h.sendMessageToChat(c.chatId, text)
 }
 
@@ -202,10 +206,7 @@ func (h *MessageHandler) addByNumber(c conversation) {
 
 func (h *MessageHandler) removeMe(c conversation) {
 
-	var participant store.Participant
-	var err error
-
-	participant, err = h.Storage.Find(strconv.Itoa(c.message.From.ID), c.chatId)
+	participant, err := h.Storage.Find(strconv.Itoa(c.message.From.ID), c.chatId)
 	if err != nil {
 		participant, err = h.Storage.FindByLink("@"+c.message.From.UserName, c.chatId)
 		if err != nil {
@@ -215,16 +216,13 @@ func (h *MessageHandler) removeMe(c conversation) {
 	}
 
 	h.Storage.Delete(participant)
-	h.sendMessageToChat(c.chatId, fmt.Sprintf("Removed %s", store.Escape(participant.Link())))
 
-	text := h.participantsText(c.chatId)
+	text := fmt.Sprintf("*Removed %s*", store.Escape(participant.Link())) + "\n" +
+		h.participantsText(c.chatId)
 	h.sendMessageToChat(c.chatId, text)
 }
 
 func (h *MessageHandler) removeByNumber(c conversation) {
-
-	var participant store.Participant
-	var err error
 
 	numberString := string(c.checker.Find([]byte(c.args)))
 	number, err := strconv.Atoi(numberString)
@@ -233,53 +231,47 @@ func (h *MessageHandler) removeByNumber(c conversation) {
 		return
 	}
 
-	participant, err = h.Storage.FindByNumber(number, c.chatId)
+	participant, err := h.Storage.FindByNumber(number, c.chatId)
 	if err != nil {
 		h.sendMessageToChat(c.chatId, store.Escape(err.Error()))
 		return
 	}
 
 	h.Storage.Delete(participant)
-	h.sendMessageToChat(c.chatId, fmt.Sprintf("Removed %s", store.Escape(participant.Link())))
 
-	text := h.participantsText(c.chatId)
+	text := fmt.Sprintf("*Removed %s*", store.Escape(participant.Link())) + "\n" +
+		h.participantsText(c.chatId)
 	h.sendMessageToChat(c.chatId, text)
 }
 
 func (h *MessageHandler) removeByLink(c conversation) {
 
-	var participant store.Participant
-	var err error
-
 	linkString := string(c.checker.Find([]byte(c.args)))
-	participant, err = h.Storage.FindByLink(linkString, c.chatId)
+	participant, err := h.Storage.FindByLink(linkString, c.chatId)
 	if err != nil {
 		h.sendMessageToChat(c.chatId, store.Escape(err.Error()))
 		return
 	}
 
 	h.Storage.Delete(participant)
-	h.sendMessageToChat(c.chatId, fmt.Sprintf("Removed %s", store.Escape(participant.Link())))
 
-	text := h.participantsText(c.chatId)
+	text := fmt.Sprintf("*Removed %s*", store.Escape(participant.Link())) + "\n" +
+		h.participantsText(c.chatId)
 	h.sendMessageToChat(c.chatId, text)
 }
 
 func (h *MessageHandler) removeByName(c conversation) {
 
-	var participant store.Participant
-	var err error
-
-	participant, err = h.Storage.FindByName(c.args, c.chatId)
+	participant, err := h.Storage.FindByName(c.args, c.chatId)
 	if err != nil {
 		h.sendMessageToChat(c.chatId, store.Escape(err.Error()))
 		return
 	}
 
 	h.Storage.Delete(participant)
-	h.sendMessageToChat(c.chatId, fmt.Sprintf("Removed %s", store.Escape(participant.Link())))
 
-	text := h.participantsText(c.chatId)
+	text := fmt.Sprintf("*Removed %s*", store.Escape(participant.Link())) + "\n" +
+		h.participantsText(c.chatId)
 	h.sendMessageToChat(c.chatId, text)
 }
 
@@ -323,7 +315,7 @@ func (h *MessageHandler) participantsText(chatId int64) (text string) {
 	if len(participants) == 0 {
 		return "No participants"
 	}
-	text = "List of participants:\n"
+	text = "Participants:\n"
 	for i, p := range participants {
 		text = text + fmt.Sprintf(" *%v)* %v\n", i+1, store.Escape(p.Name()))
 	}

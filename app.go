@@ -57,15 +57,16 @@ func (a *app) makeBotService() (s *tlg.BotService) {
 		Storage: a.storage,
 		Version: a.version,
 	}
-	handler.Init()
 
-	return &tlg.BotService{
-		Bot: bot,
+	service := tlg.BotService{
+		Bot:     bot,
 		Handler: handler,
 	}
+	service.Init()
+	return &service
 }
 
-func (a app) printVersion() {
+func (a *app) printVersion() {
 	fmt.Printf("Version: %s\nCommit: %s\nRuntime: %s %s/%s\nDate: %s\n",
 		a.version,
 		a.commit,
@@ -74,4 +75,8 @@ func (a app) printVersion() {
 		runtime.GOARCH,
 		a.date,
 	)
+}
+
+func (a *app) Close() () {
+	a.storage.Close()
 }

@@ -9,6 +9,25 @@ type BotService struct {
 	Handler *MessageHandler
 }
 
+func (s *BotService) Init() {
+	h := s.Handler
+	h.routes = []route{
+		{`add`, ``, h.addMe},
+		{`add`, `^@(\S+)$`, h.addByLink},
+		{`add`, `^\d+$`, h.addByNumber},
+		{`add`, `^.+$`, h.addByName},
+		{`rm`, ``, h.removeMe},
+		{`rm`, `^@(\S+)$`, h.removeByLink},
+		{`rm`, `^\d+$`, h.removeByNumber},
+		{`rm`, `^.+$`, h.removeByName},
+		{`list`, ``, h.list},
+		{`ping`, ``, h.ping},
+		{`reset`, ``, h.reset},
+		{`start`, ``, h.help},
+		{`help`, ``, h.help},
+	}
+}
+
 func (s *BotService) Run() error {
 
 	updates, err := s.chatUpdates()

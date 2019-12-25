@@ -42,7 +42,7 @@ func NewStorage(storePath string) (*Storage, error) {
 
 func (s *Storage) Close() () {
 	_ = s.db.Close()
-	log.Printf("Storage closed")
+	log.Print("Storage closed")
 }
 
 func (s *Storage) Create(participant Participant) Participant {
@@ -182,6 +182,11 @@ func (s *Storage) FindByChatId(chatId int64) (participants []Participant) {
 		return participants[i].Time.Before(participants[j].Time)
 	})
 	return participants
+}
+
+func (s *Storage) CountByChatId(chatId int64) int {
+	participants := s.FindByChatId(chatId)
+	return len(participants)
 }
 
 func (s *Storage) list(bucketName string) (values [][]byte) {
