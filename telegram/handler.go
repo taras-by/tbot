@@ -130,7 +130,7 @@ func (h *MessageHandler) addMe(c conversation) {
 		},
 	)
 
-	text := fmt.Sprintf("*Added %s*", store.Escape(participant.Link())) + "\n" +
+	text := fmt.Sprintf("*Added* %s", store.Escape(participant.Link())) + "\n" +
 		h.participantsText(c.chatId)
 	h.sendMessageToChat(c.chatId, text)
 }
@@ -166,7 +166,7 @@ func (h *MessageHandler) addByLink(c conversation) {
 		},
 	)
 
-	text := fmt.Sprintf("*Added %s*", store.Escape(participant.Link())) + "\n" +
+	text := fmt.Sprintf("*Added* %s", store.Escape(participant.Link())) + "\n" +
 		h.participantsText(c.chatId)
 	h.sendMessageToChat(c.chatId, text)
 }
@@ -195,7 +195,7 @@ func (h *MessageHandler) addByName(c conversation) {
 		},
 	)
 
-	text := fmt.Sprintf("*Added %s*", store.Escape(participant.Link())) + "\n" +
+	text := fmt.Sprintf("*Added* %s", store.Escape(participant.Link())) + "\n" +
 		h.participantsText(c.chatId)
 	h.sendMessageToChat(c.chatId, text)
 }
@@ -217,7 +217,7 @@ func (h *MessageHandler) removeMe(c conversation) {
 
 	h.Storage.Delete(participant)
 
-	text := fmt.Sprintf("*Removed %s*", store.Escape(participant.Link())) + "\n" +
+	text := fmt.Sprintf("*Removed* %s", store.Escape(participant.Link())) + "\n" +
 		h.participantsText(c.chatId)
 	h.sendMessageToChat(c.chatId, text)
 }
@@ -239,7 +239,7 @@ func (h *MessageHandler) removeByNumber(c conversation) {
 
 	h.Storage.Delete(participant)
 
-	text := fmt.Sprintf("*Removed %s*", store.Escape(participant.Link())) + "\n" +
+	text := fmt.Sprintf("*Removed* %s", store.Escape(participant.Link())) + "\n" +
 		h.participantsText(c.chatId)
 	h.sendMessageToChat(c.chatId, text)
 }
@@ -255,7 +255,7 @@ func (h *MessageHandler) removeByLink(c conversation) {
 
 	h.Storage.Delete(participant)
 
-	text := fmt.Sprintf("*Removed %s*", store.Escape(participant.Link())) + "\n" +
+	text := fmt.Sprintf("*Removed* %s", store.Escape(participant.Link())) + "\n" +
 		h.participantsText(c.chatId)
 	h.sendMessageToChat(c.chatId, text)
 }
@@ -270,7 +270,7 @@ func (h *MessageHandler) removeByName(c conversation) {
 
 	h.Storage.Delete(participant)
 
-	text := fmt.Sprintf("*Removed %s*", store.Escape(participant.Link())) + "\n" +
+	text := fmt.Sprintf("*Removed* %s", store.Escape(participant.Link())) + "\n" +
 		h.participantsText(c.chatId)
 	h.sendMessageToChat(c.chatId, text)
 }
