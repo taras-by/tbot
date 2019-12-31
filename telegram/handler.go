@@ -206,7 +206,16 @@ func (h *MessageHandler) addByNumber(c conversation) {
 
 func (h *MessageHandler) removeMe(c conversation) {
 
-	participant, err := h.Storage.Find(strconv.Itoa(c.message.From.ID), c.chatId)
+	participant, err := h.Storage.Find(store.Participant{
+		User: store.User{
+			Id:        strconv.Itoa(c.message.From.ID),
+			UserName:  c.message.From.UserName,
+			FirstName: c.message.From.FirstName,
+			LastName:  c.message.From.LastName,
+			Type:      store.UserTelegram,
+		},
+		ChatId: c.chatId,
+	})
 	if err != nil {
 		participant, err = h.Storage.FindByLink("@"+c.message.From.UserName, c.chatId)
 		if err != nil {

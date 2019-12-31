@@ -91,17 +91,17 @@ func (s *Storage) DeleteAll(chatId int64) error {
 	return errors.Wrapf(err, "Failed to delete participants")
 }
 
-func (s *Storage) Find(key string, chatId int64) (participant Participant, err error) {
+func (s *Storage) Find(p Participant) (participant Participant, err error) {
 	err = s.db.View(func(tx *bolt.Tx) (err error) {
 		var chatBkt *bolt.Bucket
 
-		if chatBkt, err = s.getChatBucket(tx, chatId); err != nil {
+		if chatBkt, err = s.getChatBucket(tx, p.ChatId); err != nil {
 			return err
 		}
 
-		value := chatBkt.Get([]byte(key))
+		value := chatBkt.Get([]byte(p.Id()))
 		if value == nil {
-			return errors.Errorf("no value for %s", key)
+			return errors.Errorf("no value for %s", p.Id())
 		}
 
 		if err := json.Unmarshal(value, &participant); err != nil {
